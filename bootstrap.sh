@@ -1,5 +1,6 @@
 #!/bin/bash -uxe
-exec > >(tee -i $HOME/bootstrap.log) 2>&1
+mkdir -p $HOME/logs
+exec > >(tee -i $HOME/logs/bootstrap.log) 2>&1
 # A bash script that prepares the OS
 # before running the Ansible playbook
 
