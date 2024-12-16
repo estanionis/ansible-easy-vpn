@@ -111,9 +111,11 @@ install_dependencies_centos() {
       python39-setuptools
       python39-pip
       python3-firewall
-      kmod-wireguard
-      https://ftp.gwdg.de/pub/linux/elrepo/elrepo/el8/x86_64/RPMS/kmod-wireguard-1.0.20220627-4.el8_7.elrepo.x86_64.rpm
+      # kmod-wireguard
+      # https://ftp.gwdg.de/pub/linux/elrepo/elrepo/el8/x86_64/RPMS/kmod-wireguard-1.0.20220627-4.el8_7.elrepo.x86_64.rpm
     )
+    $SUDO dnf install -y https://www.elrepo.org/elrepo-release-8.el8.elrepo.noarch.rpm
+    $SUDO dnf install -y kmod-wireguard
   fi
   $SUDO dnf update -y
   $SUDO dnf install -y epel-release
