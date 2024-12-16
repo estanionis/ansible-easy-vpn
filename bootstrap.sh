@@ -133,7 +133,7 @@ if [ -d "$HOME/ansible-easy-vpn" ]; then
   git pull
   popd
 else
-  git clone https://github.com/notthebee/ansible-easy-vpn $HOME/ansible-easy-vpn
+  git clone https://github.com/estanionis/ansible-easy-vpn $HOME/ansible-easy-vpn
 fi
 
 # Set up a Python venv
@@ -253,6 +253,13 @@ done
 public_ip=$(curl -s https://api.ipify.org)
 domain_ip=$(dig +short @1.1.1.1 ${root_host})
 
+# Patikriname, ar DNS grąžina reikšmę
+if [[ -z "$domain_ip" ]]; then
+  echo "ERROR: Unable to resolve the domain $root_host. Check your DNS settings."
+  exit 1
+fi
+
+# Tikriname, ar domeno IP sutampa su viešuoju serverio IP
 until [[ $domain_ip =~ $public_ip ]]; do
   echo
   echo "The domain $root_host does not resolve to the public IP of this server ($public_ip)"
@@ -262,8 +269,14 @@ until [[ $domain_ip =~ $public_ip ]]; do
   if [ -z ${root_host} ]; then
     root_host=$root_host_prev
   fi
-  public_ip=$(curl -s ipinfo.io/ip)
+  public_ip=$(curl -s https://api.ipify.org)
   domain_ip=$(dig +short @1.1.1.1 ${root_host})
+
+  # Patikriname iš naujo, ar `dig` grąžina reikšmę
+  if [[ -z "$domain_ip" ]]; then
+    echo "ERROR: Unable to resolve the domain $root_host. Check your DNS settings."
+    exit 1
+  fi
   echo
 done
 
