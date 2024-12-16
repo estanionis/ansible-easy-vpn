@@ -194,8 +194,6 @@ echo "press [Ctrl+C] to quit this script"
 echo
 echo "Enter your desired UNIX username"
 read -p "Username: " username
-echo "Enter your desired UNIX username"
-read -p "Username: " username
 until [[ "$username" =~ ^[a-z0-9]{3,16}$ ]]; do
   echo "Invalid username: must be 3-16 characters, lowercase letters and numbers only."
   read -p "Username: " username
