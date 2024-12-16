@@ -193,9 +193,10 @@ echo "press [Ctrl+C] to quit this script"
 echo
 echo "Enter your desired UNIX username"
 read -p "Username: " username
-until [[ "$username" =~ ^[a-z0-9]*$ ]]; do
-  echo "Invalid username"
-  echo "Make sure the username only contains lowercase letters and numbers"
+echo "Enter your desired UNIX username"
+read -p "Username: " username
+until [[ "$username" =~ ^[a-z0-9]{3,16}$ ]]; do
+  echo "Invalid username: must be 3-16 characters, lowercase letters and numbers only."
   read -p "Username: " username
 done
 
@@ -205,10 +206,9 @@ echo
 echo "Enter your user password"
 echo "This password will be used for Authelia login, administrative access and SSH login"
 read -s -p "Password: " user_password
-until [[ "${#user_password}" -lt 60 ]]; do
+until [[ "${#user_password}" -ge 8 && "${#user_password}" -lt 60 ]]; do
   echo
-  echo "The password is too long"
-  echo "OpenSSH does not support passwords longer than 72 characters"
+  echo "Invalid password: must be between 8 and 59 characters."
   read -s -p "Password: " user_password
 done
 echo
@@ -247,8 +247,8 @@ else
 fi
 echo
 read -p "Domain name: " root_host
-until [[ "$root_host" =~ ^[a-z0-9\.\-]*$ ]]; do
-  echo "Invalid domain name"
+until [[ -n "$root_host" && "$root_host" =~ ^[a-z0-9\.\-]+$ ]]; do
+  echo "Invalid domain name: only letters, numbers, dots, and hyphens are allowed."
   read -p "Domain name: " root_host
 done
 
