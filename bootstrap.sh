@@ -1,4 +1,5 @@
 #!/bin/bash -uxe
+exec > >(tee -i $HOME/ansible-easy-vpn/bootstrap.log) 2>&1
 # A bash script that prepares the OS
 # before running the Ansible playbook
 
@@ -304,6 +305,7 @@ read -p "DNS [1]: " dns_number
 
 if [ -z ${dns_number} ] || [ ${dns_number} == "1" ]; then
     dns_nameservers="cloudflare"
+    echo "Using default DNS: Cloudflare [1.1.1.1]"
 else
   until [[ "$dns_number" =~ ^[2-3]$ ]]; do
     echo "Invalid DNS choice"
@@ -347,54 +349,125 @@ fi
 
 
 echo
-echo "Would you like to set up the e-mail functionality?"
-echo "It will be used to confirm the 2FA setup and restore the password in case you forget it"
 echo
-echo "This is optional"
+echo "Would you like to set up the e-mail functionality?"
+echo "It will be used to confirm the 2FA setup and restore the password in case you forget it."
 echo
 read -p "Set up e-mail? [y/N]: " email_setup
+
 until [[ "$email_setup" =~ ^[yYnN]*$ ]]; do
-				echo "$email_setup: invalid selection."
-				read -p "[y/N]: " email_setup
+  echo "Invalid selection."
+  read -p "Set up e-mail? [y/N]: " email_setup
 done
 
 if [[ "$email_setup" =~ ^[yY]$ ]]; then
-  echo
-  read -p "SMTP server: " email_smtp_host
-  until [[ "$email_smtp_host" =~ ^[-a-z0-9\.]*$ ]]; do
-    echo "Invalid SMTP server"
-    read -p "SMTP server: " email_smtp_host
+  # SMTP provider selection
+  echo "Select your SMTP provider or enter a custom server:"
+  echo "1. Office 365 (smtp.office365.com, TLS, port 587)"
+  echo "2. Gmail (smtp.gmail.com, TLS, port 587)"
+  echo "3. Yahoo Mail (smtp.mail.yahoo.com, SSL, port 465)"
+  echo "4. Custom SMTP server"
+  read -p "Enter your choice [1]: " smtp_choice
+  smtp_choice=${smtp_choice:-1}
+
+  case $smtp_choice in
+    1)
+      email_smtp_host="smtp.office365.com"
+      email_protocol="TLS"
+      email_smtp_port=587
+      ;;
+    2)
+      email_smtp_host="smtp.gmail.com"
+      email_protocol="TLS"
+      email_smtp_port=587
+      ;;
+    3)
+      email_smtp_host="smtp.mail.yahoo.com"
+      email_protocol="SSL"
+      email_smtp_port=465
+      ;;
+    4)
+      # Custom SMTP server
+      while true; do
+        read -p "SMTP server: " email_smtp_host
+        if [[ -n "$email_smtp_host" && "$email_smtp_host" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+          break
+        fi
+        echo "Invalid SMTP server: must contain only letters, numbers, dots, underscores, or hyphens."
+        echo "You must provide a valid SMTP server address."
+      done
+
+      # Protocol selection for custom server
+      while true; do
+        echo "Choose e-mail protocol:"
+        echo "1. TLS (default)"
+        echo "2. SSL"
+        echo "3. None (no encryption)"
+        read -p "Enter your choice [1]: " protocol_choice
+        protocol_choice=${protocol_choice:-1}
+
+        case $protocol_choice in
+          1)
+            email_protocol="TLS"
+            email_smtp_port=587
+            break
+            ;;
+          2)
+            email_protocol="SSL"
+            email_smtp_port=465
+            break
+            ;;
+          3)
+            email_protocol="None"
+            email_smtp_port=25
+            break
+            ;;
+          *)
+            echo "Invalid choice. Please select 1, 2, or 3."
+            ;;
+        esac
+      done
+      ;;
+    *)
+      echo "Invalid choice. Defaulting to Office 365."
+      email_smtp_host="smtp.office365.com"
+      email_protocol="TLS"
+      email_smtp_port=587
+      ;;
+  esac
+
+  # SMTP login
+  while true; do
+    read -p "SMTP login: " email_login
+    if [[ -n "$email_login" ]]; then
+      break
+    fi
+    echo "SMTP login cannot be empty."
   done
+
+  # SMTP password (optional)
+  read -s -p "SMTP password (press Enter to skip): " email_password
   echo
-  read -p "SMTP port [465]: " email_smtp_port
-  if [ -z ${email_smtp_port} ]; then
-    email_smtp_port="465"
-  fi
-  echo
-  read -p "SMTP login: " email_login
-  echo
-  read -s -p "SMTP password: " email_password
-  until [[ ! -z "$email_password" ]]; do
-    echo "The password is empty"
-    read -s -p "SMTP password: " email_password
-  done
-  echo
-  echo
+
+  # 'From' and 'To' e-mail
   read -p "'From' e-mail [${email_login}]: " email
-  if [ ! -z ${email} ]; then
-    echo "email: \"${email}\"" >> $HOME/ansible-easy-vpn/custom.yml
-  fi
+  email=${email:-$email_login}
 
   read -p "'To' e-mail [${email_login}]: " email_recipient
-  if [ ! -z ${email_recipient} ]; then
-    echo "email_recipient: \"${email_recipient}\"" >> $HOME/ansible-easy-vpn/custom.yml
-  fi
+  email_recipient=${email_recipient:-$email_login}
 
-
-
+  # Write to custom.yml
   echo "email_smtp_host: \"${email_smtp_host}\"" >> $HOME/ansible-easy-vpn/custom.yml
   echo "email_smtp_port: \"${email_smtp_port}\"" >> $HOME/ansible-easy-vpn/custom.yml
+  echo "email_protocol: \"${email_protocol}\"" >> $HOME/ansible-easy-vpn/custom.yml
   echo "email_login: \"${email_login}\"" >> $HOME/ansible-easy-vpn/custom.yml
+  echo "email: \"${email}\"" >> $HOME/ansible-easy-vpn/custom.yml
+  echo "email_recipient: \"${email_recipient}\"" >> $HOME/ansible-easy-vpn/custom.yml
+
+  # Write password to secret.yml if provided
+  if [[ -n "$email_password" ]]; then
+    echo "email_password: \"${email_password}\"" >> $HOME/ansible-easy-vpn/secret.yml
+  fi
 fi
 
 
@@ -425,6 +498,10 @@ echo "storage_encryption_key: ${storage_encryption_key}" >> $HOME/ansible-easy-v
 
 echo
 echo "Encrypting the variables"
+if [[ ! -s $HOME/ansible-easy-vpn/secret.yml ]]; then
+    echo "Error: secret.yml is empty or missing. Skipping encryption."
+    exit 1
+fi
 ansible-vault encrypt $HOME/ansible-easy-vpn/secret.yml
 
 echo
