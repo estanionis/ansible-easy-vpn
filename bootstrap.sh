@@ -1,6 +1,5 @@
 #!/bin/bash -uxe
-mkdir -p $HOME/ansible-easy-vpn
-exec > >(tee -i $HOME/ansible-easy-vpn/bootstrap.log) 2>&1
+exec > >(tee -i $HOME/bootstrap.log) 2>&1
 # A bash script that prepares the OS
 # before running the Ansible playbook
 
