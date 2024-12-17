@@ -30,7 +30,7 @@ all:
 
     wireguard_host: "wg.{{ root_host }}"
 
-    wireguard_subnet: "10.8.0.x"
+    wireguard_subnet: "10.9.0.x"
 
     wireguard_client_allowed_ips: "0.0.0.0/0, ::/0"
 
